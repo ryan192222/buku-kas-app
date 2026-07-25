@@ -1,0 +1,1330 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Buku Kas Keuangan Super App</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-100 min-h-screen transition-colors duration-300">
+
+  <!-- AUTH SECTION -->
+  <div id="auth-section" class="flex items-center justify-center min-h-screen p-4">
+    <div class="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-xl w-full max-w-md">
+      
+      <!-- Step 1: Form Login / Register -->
+      <div id="form-auth-step">
+        <h2 id="auth-title" class="text-2xl font-bold text-center mb-6">Login Keuangan</h2>
+        <form id="auth-form" onsubmit="handleAuth(event)" class="space-y-4">
+          <div>
+            <label class="block text-sm font-semibold mb-1">Email</label>
+            <input type="email" id="auth-email" required class="w-full p-3 border rounded-xl dark:bg-gray-700 dark:border-gray-600">
+          </div>
+          <div>
+            <label class="block text-sm font-semibold mb-1">Password</label>
+            <input type="password" id="auth-password" required class="w-full p-3 border rounded-xl dark:bg-gray-700 dark:border-gray-600">
+          </div>
+          <button type="submit" id="auth-submit-btn" class="w-full bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 transition">Masuk</button>
+        </form>
+        
+        <div class="flex justify-between items-center text-sm mt-4">
+          <span id="auth-toggle-text">Belum punya akun?</span>
+          <div>
+            <button type="button" onclick="showForgotPassword()" class="text-orange-500 font-bold hover:underline mr-3">Lupa Password?</button>
+            <button type="button" onclick="toggleAuthMode()" id="auth-toggle-btn" class="text-blue-500 font-bold hover:underline">Daftar</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 2: Form OTP -->
+      <div id="form-otp-step" class="hidden">
+        <h2 class="text-2xl font-bold text-center mb-2">Verifikasi OTP</h2>
+        <p class="text-sm text-center text-gray-500 mb-6">Masukkan 6 digit kode OTP yang dikirim ke email Anda.</p>
+        <form onsubmit="handleVerifyOTP(event)" class="space-y-4">
+          <div>
+            <label class="block text-sm font-semibold mb-1">Kode OTP</label>
+            <input type="text" id="otp-input" maxlength="6" placeholder="123456" required class="w-full p-3 border rounded-xl text-center text-2xl font-bold tracking-widest dark:bg-gray-700 dark:border-gray-600">
+          </div>
+          <button type="submit" class="w-full bg-green-600 text-white py-3 rounded-xl font-bold hover:bg-green-700 transition">Verifikasi Akun</button>
+        </form>
+        <button onclick="backToAuth()" class="w-full mt-3 text-sm text-gray-500 hover:underline text-center">Kembali</button>
+      </div>
+
+      <!-- Step 3: Form Lupa / Reset Password -->
+      <div id="form-reset-step" class="hidden">
+        <h2 class="text-2xl font-bold text-center mb-2">Reset Password</h2>
+        <p id="reset-desc" class="text-sm text-center text-gray-500 mb-6">Masukkan email akun Anda untuk menerima kode OTP reset password.</p>
+        
+        <!-- Sub-step A: Masukkan Email -->
+        <form id="forgot-email-form" onsubmit="handleRequestResetOTP(event)" class="space-y-4">
+          <div>
+            <label class="block text-sm font-semibold mb-1">Email Terdaftar</label>
+            <input type="email" id="reset-email-input" required class="w-full p-3 border rounded-xl dark:bg-gray-700 dark:border-gray-600">
+          </div>
+          <button type="submit" class="w-full bg-orange-600 text-white py-3 rounded-xl font-bold hover:bg-orange-700 transition">Kirim Kode OTP</button>
+        </form>
+
+        <!-- Sub-step B: Masukkan OTP & Password Baru (Hidden dulu) -->
+        <form id="forgot-new-pass-form" onsubmit="handleConfirmReset(event)" class="space-y-4 hidden">
+          <div>
+            <label class="block text-sm font-semibold mb-1">Kode OTP</label>
+            <input type="text" id="reset-otp-input" maxlength="6" placeholder="123456" required class="w-full p-3 border rounded-xl text-center text-xl font-bold tracking-widest dark:bg-gray-700 dark:border-gray-600">
+          </div>
+          <div>
+            <label class="block text-sm font-semibold mb-1">Password Baru</label>
+            <input type="password" id="reset-new-password" required class="w-full p-3 border rounded-xl dark:bg-gray-700 dark:border-gray-600">
+          </div>
+          <button type="submit" class="w-full bg-green-600 text-white py-3 rounded-xl font-bold hover:bg-green-700 transition">Simpan Password Baru</button>
+        </form>
+
+        <button onclick="backToAuthFromReset()" class="w-full mt-3 text-sm text-gray-500 hover:underline text-center">Kembali ke Login</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- MAIN APP SECTION -->
+  <div id="app-section" class="hidden">
+    <!-- Navbar -->
+    <nav class="bg-white dark:bg-gray-800 shadow-md p-4 sticky top-0 z-50">
+      <div class="max-w-6xl mx-auto flex justify-between items-center">
+        <h1 class="text-xl font-bold flex items-center gap-2">
+          <i class="fa-solid fa-wallet text-blue-500"></i> Buku Kas Keuangan
+        </h1>
+        <div class="flex items-center gap-3">
+          <button onclick="toggleDarkMode()" class="p-2 rounded-lg bg-gray-200 dark:bg-gray-700">
+            <i class="fa-solid fa-moon dark:hidden"></i>
+            <i class="fa-solid fa-sun hidden dark:inline text-yellow-400"></i>
+          </button>
+          <button onclick="exportExcel()" class="bg-green-600 text-white px-3 py-2 rounded-lg text-sm font-semibold hover:bg-green-700 flex items-center gap-1">
+            <i class="fa-solid fa-file-excel"></i> Export Excel
+          </button>
+          <button onclick="logout()" class="text-red-500 hover:text-red-700 font-bold text-sm">
+            <i class="fa-solid fa-right-from-bracket"></i> Keluar
+          </button>
+        </div>
+      </div>
+    </nav>
+
+    <div class="max-w-6xl mx-auto p-4 md:p-6 space-y-6">
+      
+      <!-- 💡 FITUR SMART SAVER & DANA DARURAT -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <section class="md:col-span-2 bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-6 rounded-2xl shadow-lg">
+          <div class="flex flex-wrap justify-between items-center gap-2 mb-4">
+            <h2 class="text-lg font-bold flex items-center gap-2">
+              <i class="fa-solid fa-piggy-bank text-yellow-300 text-xl"></i> Smart Saver
+            </h2>
+            
+            <div class="flex flex-wrap items-center gap-2">
+              <select id="saver-cycle" onchange="updateSmartSaver()" class="text-xs bg-white/20 text-white rounded-lg px-2 py-1.5 font-semibold border border-white/30 focus:outline-none dark:bg-gray-800">
+                <option value="bulanan" class="text-gray-800 dark:text-gray-200">Siklus: Bulanan</option>
+                <option value="mingguan" class="text-gray-800 dark:text-gray-200">Siklus: Mingguan</option>
+              </select>
+              
+              <button onclick="resetWeeklyCycle()" class="text-xs bg-yellow-400 hover:bg-yellow-500 text-gray-900 px-2.5 py-1.5 rounded-lg font-bold flex items-center gap-1 shadow transition">
+                <i class="fa-solid fa-rotate-right"></i> Restart Minggu Ini
+              </button>
+
+              <span id="saver-status-badge" class="px-3 py-1 rounded-full text-xs font-bold bg-white text-gray-800">Menghitung...</span>
+            </div>
+          </div>
+          
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center sm:text-left">
+            <div class="bg-white/10 backdrop-blur-md p-4 rounded-xl border border-white/20">
+              <p class="text-xs text-blue-100 font-semibold">Jatah Kuota Pengeluaran</p>
+              <p id="saver-daily-limit" class="text-xl font-extrabold mt-1">Rp 0</p>
+              <p class="text-[11px] text-blue-200 mt-1" id="saver-days-left">Sisa hari: 0 hari</p>
+            </div>
+            
+            <div class="bg-white/10 backdrop-blur-md p-4 rounded-xl border border-white/20">
+              <p class="text-xs text-blue-100 font-semibold">Pengeluaran Periode Ini</p>
+              <p id="saver-today-spent" class="text-xl font-extrabold mt-1 text-yellow-300">Rp 0</p>
+              <p class="text-[11px] text-blue-200 mt-1" id="saver-daily-remaining">Sisa kuota: Rp 0</p>
+            </div>
+
+            <div class="bg-white/10 backdrop-blur-md p-4 rounded-xl border border-white/20">
+              <p class="text-xs text-blue-100 font-semibold">Kebutuhan vs Keinginan</p>
+              <div class="flex items-center justify-between text-xs font-bold mt-2">
+                <span class="text-green-300">🛒 <span id="saver-needs-percent">0%</span></span>
+                <span class="text-pink-300">🛍️ <span id="saver-wants-percent">0%</span></span>
+              </div>
+              <div class="w-full bg-white/20 h-2.5 rounded-full overflow-hidden mt-2">
+                <div id="saver-needs-bar" class="bg-green-400 h-full float-left" style="width: 50%"></div>
+                <div id="saver-wants-bar" class="bg-pink-400 h-full float-left" style="width: 50%"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 🛡️ KALKULATOR DANA DARURAT -->
+        <section class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-md flex flex-col justify-between">
+          <div>
+            <h2 class="text-md font-bold flex items-center gap-2 mb-3">
+              <i class="fa-solid fa-shield-halved text-emerald-500 text-lg"></i> Dana Darurat
+            </h2>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">Kemampuan bertahan hidup jika tanpa pemasukan:</p>
+            <p id="emergency-months" class="text-3xl font-extrabold text-emerald-600 dark:text-emerald-400">0 Bulan</p>
+            <p id="emergency-desc" class="text-xs text-gray-500 mt-1">Berdasarkan total saldo vs rata-rata pengeluaran.</p>
+          </div>
+          <div class="mt-4 pt-3 border-t dark:border-gray-700 text-xs flex justify-between text-gray-500">
+            <span>Rata-rata/bln:</span>
+            <span id="emergency-avg-exp" class="font-bold text-gray-700 dark:text-gray-200">Rp 0</span>
+          </div>
+        </section>
+      </div>
+
+      <!-- 🧮 WIDGET KALKULATOR SMART BUDGET SPLITTER & KUOTA HARIAN -->
+      <section class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-md border border-gray-100 dark:border-gray-700">
+        <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-5">
+          <div>
+            <h2 class="text-lg font-bold flex items-center gap-2">
+              <i class="fa-solid fa-calculator text-indigo-500"></i> Smart Budget Splitter & Kuota Harian
+            </h2>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Atur alokasi dana secara otomatis berdasarkan target tabungan manual & tagihan rutin riil[cite: 5].</p>
+          </div>
+
+          <!-- Controls: Input Anggaran, Input Tabungan Manual, Presets -->
+          <div class="flex flex-wrap items-center gap-2 w-full lg:w-auto">
+            <!-- Preset Rasio Pokok vs Jajan -->
+            <select id="budget-preset" onchange="calculateSmartBudget()" class="p-2.5 text-xs font-semibold border rounded-xl dark:bg-gray-700 dark:border-gray-600 text-gray-700 dark:text-gray-200">
+              <option value="standard">Rasio Pokok/Jajan: 70% / 30%</option>
+              <option value="50-30-20">Rasio Pokok/Jajan: 50% / 50%</option>
+              <option value="extreme">Rasio Pokok/Jajan: 80% / 20% (Hemat)</option>
+            </select>
+
+            <!-- Input Total Anggaran -->
+            <div class="flex flex-col">
+              <label class="text-[10px] text-gray-500 font-semibold mb-0.5">Total Anggaran (Rp)</label>
+              <input type="number" id="input-total-budget" value="8500000" oninput="calculateSmartBudget()" placeholder="Total Gaji/Anggaran" class="p-2 text-sm border rounded-xl dark:bg-gray-700 dark:border-gray-600 font-bold text-gray-800 dark:text-white w-32 sm:w-36">
+            </div>
+
+            <!-- Input Tabungan Manual -->
+            <div class="flex flex-col">
+              <label class="text-[10px] text-emerald-600 font-semibold mb-0.5">Tabungan Manual (Rp)</label>
+              <input type="number" id="input-manual-savings" value="2000000" oninput="calculateSmartBudget()" placeholder="Target Tabungan" class="p-2 text-sm border border-emerald-300 dark:border-emerald-700 rounded-xl dark:bg-gray-700 font-bold text-emerald-600 dark:text-emerald-400 w-32 sm:w-36">
+            </div>
+
+            <button onclick="calculateSmartBudget()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-2 mt-4 sm:mt-0 rounded-xl font-bold text-sm transition">Hitung</button>
+          </div>
+        </div>
+
+        <!-- Tombol Cepat Nominal Anggaran -->
+        <div class="flex items-center gap-2 mb-4 text-xs">
+          <span class="text-gray-400 font-semibold">Cepat Anggaran:</span>
+          <button onclick="setBudgetAmount(5000000)" class="px-2.5 py-1 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/40 text-gray-600 dark:text-gray-300 font-medium">5 Jt</button>
+          <button onclick="setBudgetAmount(8500000)" class="px-2.5 py-1 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/40 text-gray-600 dark:text-gray-300 font-medium">8.5 Jt</button>
+          <button onclick="setBudgetAmount(10000000)" class="px-2.5 py-1 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/40 text-gray-600 dark:text-gray-300 font-medium">10 Jt</button>
+          <button onclick="setBudgetAmount(15000000)" class="px-2.5 py-1 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/40 text-gray-600 dark:text-gray-300 font-medium">15 Jt</button>
+        </div>
+
+        <!-- Stacked Progress Bar Visualisasi -->
+        <div class="w-full bg-gray-200 dark:bg-gray-700 h-3 rounded-full overflow-hidden flex mb-6 shadow-inner">
+          <div id="bar-savings" class="bg-emerald-500 h-full transition-all duration-300" style="width: 25%" title="Tabungan (Manual)"></div>
+          <div id="bar-fixed" class="bg-sky-500 h-full transition-all duration-300" style="width: 20%" title="Tagihan Tetap (Riil)"></div>
+          <div id="bar-needs" class="bg-amber-500 h-full transition-all duration-300" style="width: 35%" title="Pokok Harian"></div>
+          <div id="bar-wants" class="bg-pink-500 h-full transition-all duration-300" style="width: 20%" title="Jajan & Keinginan"></div>
+        </div>
+
+        <!-- Hasil Pembagian Anggaran -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+          
+          <!-- Card Tabungan (Manual) -->
+          <div class="p-4 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 rounded-xl">
+            <div class="flex justify-between items-center mb-1">
+              <span class="font-bold text-emerald-700 dark:text-emerald-300" id="label-savings">💰 Tabungan (Manual)</span>
+              <span class="text-[10px] bg-emerald-200 text-emerald-800 px-1.5 py-0.5 rounded font-semibold">Diisi Manual</span>
+            </div>
+            <p id="calc-savings" class="text-lg font-extrabold text-emerald-600 dark:text-emerald-400">Rp 2.000.000</p>
+            <p class="text-[11px] text-gray-500 mt-1">Disisihkan langsung ke rekening tabungan/investasi saat awal gajian.</p>
+          </div>
+
+          <!-- Card Biaya Tetap (Riil Tagihan Rutin) -->
+          <div class="p-4 bg-sky-50 dark:bg-sky-900/30 border border-sky-200 dark:border-sky-800 rounded-xl">
+            <div class="flex justify-between items-center mb-1">
+              <span class="font-bold text-sky-700 dark:text-sky-300" id="label-fixed">📑 Tagihan Tetap</span>
+              <span class="text-[10px] bg-sky-200 text-sky-800 px-1.5 py-0.5 rounded font-semibold">Otomatis Riil</span>
+            </div>
+            <p id="calc-fixed" class="text-lg font-extrabold text-sky-600 dark:text-sky-400">Rp 0</p>
+            <p class="text-[11px] text-gray-500 mt-1">Total otomatis dari daftar fitur Tagihan Rutin Bulanan[cite: 5].</p>
+          </div>
+
+          <!-- Card Kebutuhan Pokok Harian -->
+          <div class="p-4 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-xl">
+            <div class="flex justify-between items-center mb-1">
+              <span class="font-bold text-amber-700 dark:text-amber-300" id="label-needs">🛒 Pokok Harian</span>
+            </div>
+            <p id="calc-needs" class="text-lg font-extrabold text-amber-600 dark:text-amber-400">Rp 0</p>
+            <p class="text-[11px] text-gray-600 dark:text-gray-300 mt-1 font-medium" id="desc-needs">
+              📌 Keterangan: Bensin/transpor, makan harian, belanja dapur/sembako, galon/gas, & keperluan wajib harian[cite: 5].
+            </p>
+          </div>
+
+          <!-- Card Jajan & Keinginan -->
+          <div class="p-4 bg-pink-50 dark:bg-pink-900/30 border border-pink-200 dark:border-pink-800 rounded-xl">
+            <div class="flex justify-between items-center mb-1">
+              <span class="font-bold text-pink-700 dark:text-pink-300" id="label-wants">🛍️ Jajan & Keinginan</span>
+            </div>
+            <p id="calc-wants" class="text-lg font-extrabold text-pink-600 dark:text-pink-400">Rp 0</p>
+            <p class="text-[11px] text-gray-600 dark:text-gray-300 mt-1 font-medium" id="desc-wants">
+              📌 Keterangan: Kopi boba/ngopi, jajan sore, jalan-jalan weekend, nonton, & belanja hiburan santai[cite: 5].
+            </p>
+          </div>
+
+        </div>
+
+        <!-- Highlights Kuota Maksimal Per Hari & Action Button -->
+        <div class="mt-4 p-4 bg-indigo-50 dark:bg-indigo-900/40 rounded-xl flex flex-col sm:flex-row justify-between items-center gap-4">
+          <div class="flex items-center gap-3">
+            <div class="p-3 bg-indigo-600 text-white rounded-xl font-bold text-xl">
+              <i class="fa-solid fa-bullseye"></i>
+            </div>
+            <div>
+              <p class="text-xs font-semibold text-indigo-900 dark:text-indigo-200">Batas Kuota Pengeluaran Maksimal Harian</p>
+              <p class="text-[11px] text-indigo-700 dark:text-indigo-300" id="calc-daily-breakdown">
+                (Pokok: Rp 0 / hari | Jajan: Rp 0 / hari)
+              </p>
+            </div>
+          </div>
+          
+          <div class="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto text-right">
+            <p id="calc-daily-limit" class="text-2xl font-black text-indigo-600 dark:text-indigo-400">Rp 0 / hari</p>
+            <button onclick="applyCalculatedBudgetToSystem()" class="w-full sm:w-auto text-xs bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl font-bold flex items-center justify-center gap-1.5 transition shadow">
+              <i class="fa-solid fa-check-circle"></i> Terapkan ke Sistem
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 🤖 AI ADVISOR WIDGET -->
+      <section class="bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white p-5 rounded-2xl shadow-md mb-6 flex flex-col md:flex-row items-center justify-between gap-4">
+        <div>
+          <h2 class="text-md font-bold flex items-center gap-2 mb-1">
+            <i class="fa-solid fa-robot text-yellow-300"></i> AI Financial Advisor
+          </h2>
+          <p id="ai-insight-text" class="text-sm text-purple-100 italic">Klik tombol untuk meminta AI menganalisis keuanganmu berdasarkan riwayat transaksimu[cite: 5]...</p>
+        </div>
+        <button onclick="fetchAIInsight()" class="bg-white text-purple-700 px-4 py-2 rounded-xl font-bold text-xs hover:bg-gray-100 transition shadow whitespace-nowrap w-full md:w-auto">
+          <i class="fa-solid fa-wand-magic-sparkles"></i> Minta Saran
+        </button>
+      </section>
+
+      <!-- 📈 VISUALISASI GRAFIK CHART.JS -->
+      <section class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-md">
+          <h2 class="text-sm font-bold mb-4 flex items-center gap-2"><i class="fa-solid fa-chart-pie text-indigo-500"></i> Pengeluaran per Kategori</h2>
+          <div class="relative h-56 flex justify-center">
+            <canvas id="categoryChart"></canvas>
+          </div>
+        </div>
+        <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-md">
+          <h2 class="text-sm font-bold mb-4 flex items-center gap-2"><i class="fa-solid fa-chart-column text-blue-500"></i> Cash Flow (Pemasukan vs Pengeluaran)</h2>
+          <div class="relative h-56">
+            <canvas id="cashflowChart"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <!-- DOMPET SAYA & TRANSFER -->
+      <section>
+        <div class="flex justify-between items-center mb-3">
+          <h2 class="text-lg font-bold">💳 Dompet Saya</h2>
+          <div class="flex gap-2">
+            <button onclick="transferWalletPrompt()" class="text-sm bg-purple-600 text-white px-3 py-1.5 rounded-lg font-semibold hover:bg-purple-700 flex items-center gap-1">
+              <i class="fa-solid fa-arrow-right-arrow-left"></i> Transfer
+            </button>
+            <button onclick="addWalletPrompt()" class="text-sm bg-blue-600 text-white px-3 py-1.5 rounded-lg font-semibold hover:bg-blue-700">+ Tambah Dompet</button>
+          </div>
+        </div>
+        <div id="wallets-list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4"></div>
+      </section>
+
+      <!-- SEKSI UTANG/PIUTANG & TAGIHAN RUTIN -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        
+        <!-- 🤝 Utang & Piutang Tracker -->
+        <section class="bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-md">
+          <div class="flex justify-between items-center mb-3">
+            <h2 class="text-md font-bold flex items-center gap-2"><i class="fa-solid fa-hand-holding-dollar text-orange-500"></i> Utang & Piutang</h2>
+            <button onclick="addDebtPrompt()" class="text-xs bg-orange-600 text-white px-2.5 py-1 rounded-lg font-semibold hover:bg-orange-700">+ Catat Utang</button>
+          </div>
+
+          <!-- Ringkasan Akumulasi Utang/Piutang -->
+          <div class="grid grid-cols-3 gap-2 mb-3 text-center text-xs">
+            <div class="p-2 bg-red-50 dark:bg-red-900/30 rounded-xl">
+              <p class="text-[10px] text-gray-500 dark:text-gray-400">Total Utang</p>
+              <p id="total-utang-text" class="font-bold text-red-600 dark:text-red-400">Rp 0</p>
+            </div>
+            <div class="p-2 bg-green-50 dark:bg-green-900/30 rounded-xl">
+              <p class="text-[10px] text-gray-500 dark:text-gray-400">Total Piutang</p>
+              <p id="total-piutang-text" class="font-bold text-green-600 dark:text-green-400">Rp 0</p>
+            </div>
+            <div class="p-2 bg-blue-50 dark:bg-blue-900/30 rounded-xl">
+              <p class="text-[10px] text-gray-500 dark:text-gray-400">Proyeksi Saldo</p>
+              <p id="net-saldo-debt-text" class="font-bold text-blue-600 dark:text-blue-400">Rp 0</p>
+            </div>
+          </div>
+
+          <div id="debts-list" class="space-y-2 max-h-48 overflow-y-auto"></div>
+        </section>
+
+        <!-- 📅 Tagihan Rutin -->
+        <section class="bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-md">
+          <div class="flex justify-between items-center mb-3">
+            <h2 class="text-md font-bold flex items-center gap-2"><i class="fa-solid fa-calendar-check text-sky-500"></i> Tagihan Rutin Bulanan</h2>
+            <button onclick="addRecurringPrompt()" class="text-xs bg-sky-600 text-white px-2.5 py-1 rounded-lg font-semibold hover:bg-sky-700">+ Tagihan Baru</button>
+          </div>
+
+          <!-- Ringkasan Akumulasi Tagihan -->
+          <div class="grid grid-cols-2 gap-2 mb-3 text-center text-xs">
+            <div class="p-2 bg-sky-50 dark:bg-sky-900/30 rounded-xl">
+              <p class="text-[10px] text-gray-500 dark:text-gray-400">Total Tagihan Bulan Ini</p>
+              <p id="total-recurring-text" class="font-bold text-sky-600 dark:text-sky-400">Rp 0</p>
+            </div>
+            <div class="p-2 bg-emerald-50 dark:bg-emerald-900/30 rounded-xl">
+              <p class="text-[10px] text-gray-500 dark:text-gray-400">Saldo Bebas Tagihan</p>
+              <p id="net-saldo-recurring-text" class="font-bold text-emerald-600 dark:text-emerald-400">Rp 0</p>
+            </div>
+          </div>
+
+          <div id="recurring-list" class="space-y-2 max-h-48 overflow-y-auto"></div>
+        </section>
+
+      </div>
+
+      <!-- SEKSI PENGATUR KEUANGAN (BUDGETING & GOALS) -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        
+        <!-- 📊 Anggaran Bulanan -->
+        <section class="bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-md">
+          <div class="flex justify-between items-center mb-3">
+            <h2 class="text-md font-bold flex items-center gap-2"><i class="fa-solid fa-chart-pie text-purple-500"></i> Batas Anggaran Bulanan</h2>
+            <button onclick="addBudgetPrompt()" class="text-xs bg-purple-600 text-white px-2.5 py-1 rounded-lg font-semibold hover:bg-purple-700">+ Set Limit</button>
+          </div>
+          <div id="budgets-list" class="space-y-3"></div>
+        </section>
+
+        <!-- 🎯 Target Tabungan -->
+        <section class="bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-md">
+          <div class="flex justify-between items-center mb-3">
+            <h2 class="text-md font-bold flex items-center gap-2"><i class="fa-solid fa-bullseye text-emerald-500"></i> Target Tabungan</h2>
+            <button onclick="addGoalPrompt()" class="text-xs bg-emerald-600 text-white px-2.5 py-1 rounded-lg font-semibold hover:bg-emerald-700">+ Target Baru</button>
+          </div>
+          <div id="goals-list" class="space-y-3"></div>
+        </section>
+
+      </div>
+
+      <!-- CATAT TRANSAKSI -->
+      <section class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-md">
+        <h2 class="text-lg font-bold mb-4">➕ Catat Transaksi</h2>
+        <form id="trx-form" onsubmit="saveTransaction(event)" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+          <div>
+            <label class="block text-xs font-semibold mb-1">Jenis Transaksi</label>
+            <select id="trx-type" class="w-full p-2.5 border rounded-xl dark:bg-gray-700 dark:border-gray-600">
+              <option value="pengeluaran">Pengeluaran 💸</option>
+              <option value="pemasukan">Pemasukan 💰</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold mb-1">Pilih Dompet</label>
+            <select id="trx-wallet" class="w-full p-2.5 border rounded-xl dark:bg-gray-700 dark:border-gray-600" required></select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold mb-1">Jumlah (Rp)</label>
+            <input type="number" id="trx-amount" required class="w-full p-2.5 border rounded-xl dark:bg-gray-700 dark:border-gray-600">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold mb-1">Sifat Pengeluaran</label>
+            <select id="trx-priority" class="w-full p-2.5 border rounded-xl dark:bg-gray-700 dark:border-gray-600">
+              <option value="kebutuhan">Kebutuhan Pokok 🛒</option>
+              <option value="keinginan">Keinginan / Jajan 🛍️</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold mb-1">Deskripsi / Catatan</label>
+            <input type="text" id="trx-desc" oninput="autoCategorize(this.value)" placeholder="Contoh: Kopi Boba / Bensin" class="w-full p-2.5 border rounded-xl dark:bg-gray-700 dark:border-gray-600">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold mb-1">Kategori</label>
+            <input type="text" id="trx-cat" required placeholder="Makanan, Transpor, dll" class="w-full p-2.5 border rounded-xl dark:bg-gray-700 dark:border-gray-600">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold mb-1">Foto Struk (Opsional)</label>
+            <input type="file" id="trx-receipt" accept="image/*" class="w-full p-1.5 text-sm border rounded-xl dark:bg-gray-700 dark:border-gray-600">
+          </div>
+          <div class="sm:col-span-2 md:col-span-4">
+            <button type="submit" class="w-full bg-blue-600 text-white py-2.5 rounded-xl font-bold hover:bg-blue-700 transition">Simpan Transaksi</button>
+          </div>
+        </form>
+      </section>
+
+      <!-- RIWAYAT TRANSAKSI -->
+      <section class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-md">
+        <h2 class="text-lg font-bold mb-4">📜 Riwayat Transaksi</h2>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm">
+            <thead class="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
+              <tr>
+                <th class="p-3">Tanggal</th>
+                <th class="p-3">Sifat</th>
+                <th class="p-3">Kategori</th>
+                <th class="p-3">Catatan</th>
+                <th class="p-3">Jumlah</th>
+                <th class="p-3">Struk</th>
+                <th class="p-3 text-center">Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="trx-list" class="divide-y dark:divide-gray-700"></tbody>
+          </table>
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+  <script>
+    let isLoginMode = true;
+    let registeredEmail = "";
+    let globalWallets = [];
+    let globalTransactions = [];
+    let categoryChartInstance = null;
+    let cashflowChartInstance = null;
+
+    document.addEventListener("DOMContentLoaded", () => {
+      checkAuth();
+      if (localStorage.getItem("darkMode") === "true") document.documentElement.classList.add("dark");
+    });
+
+    function toggleDarkMode() {
+      document.documentElement.classList.toggle("dark");
+      localStorage.setItem("darkMode", document.documentElement.classList.contains("dark"));
+      renderCharts();
+    }
+
+    function checkAuth() {
+      const token = localStorage.getItem("token");
+      if (token) {
+        document.getElementById("auth-section").classList.add("hidden");
+        document.getElementById("app-section").classList.remove("hidden");
+        loadDashboardData();
+      } else {
+        document.getElementById("auth-section").classList.remove("hidden");
+        document.getElementById("app-section").classList.add("hidden");
+      }
+    }
+
+    function toggleAuthMode() {
+      isLoginMode = !isLoginMode;
+      document.getElementById("auth-title").innerText = isLoginMode ? "Login Keuangan" : "Daftar Akun Baru";
+      document.getElementById("auth-submit-btn").innerText = isLoginMode ? "Masuk" : "Daftar";
+      document.getElementById("auth-toggle-text").innerText = isLoginMode ? "Belum punya akun?" : "Sudah punya akun?";
+      document.getElementById("auth-toggle-btn").innerText = isLoginMode ? "Daftar" : "Login";
+    }
+
+    // --- FITUR RESET PASSWORD (FRONTEND) ---
+    let resetTargetEmail = "";
+
+    function showForgotPassword() {
+      document.getElementById("form-auth-step").classList.add("hidden");
+      document.getElementById("form-reset-step").classList.remove("hidden");
+      document.getElementById("forgot-email-form").classList.remove("hidden");
+      document.getElementById("forgot-new-pass-form").classList.add("hidden");
+      document.getElementById("reset-desc").innerText = "Masukkan email akun Anda untuk menerima kode OTP reset password.";
+    }
+
+    function backToAuthFromReset() {
+      document.getElementById("form-reset-step").classList.add("hidden");
+      document.getElementById("form-auth-step").classList.remove("hidden");
+    }
+
+    async function handleRequestResetOTP(e) {
+      e.preventDefault();
+      resetTargetEmail = document.getElementById("reset-email-input").value;
+
+      try {
+        const res = await fetch("/auth/forgot-password", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: resetTargetEmail })
+        });
+        const data = await res.json().catch(() => null);
+        if (!res.ok) throw new Error(data?.detail || "Gagal mengirim permintaan reset password!");
+
+        alert(data.message);
+        document.getElementById("forgot-email-form").classList.add("hidden");
+        document.getElementById("forgot-new-pass-form").classList.remove("hidden");
+        document.getElementById("reset-desc").innerText = "Masukkan kode OTP dari email/terminal dan password baru Anda.";
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function handleConfirmReset(e) {
+      e.preventDefault();
+      const otp_code = document.getElementById("reset-otp-input").value;
+      const new_password = document.getElementById("reset-new-password").value;
+
+      try {
+        const res = await fetch("/auth/reset-password", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: resetTargetEmail, otp_code, new_password })
+        });
+        const data = await res.json().catch(() => null);
+        if (!res.ok) throw new Error(data?.detail || "Gagal mereset password!");
+
+        alert(data.message);
+        backToAuthFromReset();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function handleAuth(e) {
+      e.preventDefault();
+      const email = document.getElementById("auth-email").value;
+      const password = document.getElementById("auth-password").value;
+      const endpoint = isLoginMode ? "/auth/login" : "/auth/register";
+
+      try {
+        let response;
+        if (isLoginMode) {
+          const body = new URLSearchParams({ username: email, password: password });
+          response = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body });
+        } else {
+          response = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password }) });
+        }
+
+        const data = await response.json().catch(() => null);
+        if (!response.ok) throw new Error(data?.detail || "Terjadi kesalahan pada server!");
+
+        if (isLoginMode) {
+          localStorage.setItem("token", data.access_token);
+          checkAuth();
+        } else {
+          registeredEmail = email;
+          alert(data.message || "Kode OTP dikirim! Silakan cek email/terminal.");
+          document.getElementById("form-auth-step").classList.add("hidden");
+          document.getElementById("form-otp-step").classList.remove("hidden");
+        }
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function handleVerifyOTP(e) {
+      e.preventDefault();
+      const otpCode = document.getElementById("otp-input").value;
+
+      try {
+        const response = await fetch("/auth/verify-otp", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: registeredEmail, otp_code: otpCode })
+        });
+
+        const data = await response.json().catch(() => null);
+        if (!response.ok) throw new Error(data?.detail || "Verifikasi OTP gagal!");
+
+        alert(data.message);
+        backToAuth();
+        if (!isLoginMode) toggleAuthMode();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    function backToAuth() {
+      document.getElementById("form-otp-step").classList.add("hidden");
+      document.getElementById("form-auth-step").classList.remove("hidden");
+    }
+
+    function logout() {
+      localStorage.removeItem("token");
+      checkAuth();
+    }
+
+    function getAuthHeader() {
+      return { "Authorization": `Bearer ${localStorage.getItem("token")}` };
+    }
+
+    async function loadDashboardData() {
+      await loadWallets();
+      await loadBudgets();
+      await loadGoals();
+      await loadTransactions();
+      updateSmartSaver();
+      renderCharts();
+      loadDebts();
+      loadRecurringBills();
+      updateEmergencyFund();
+      calculateSmartBudget();
+    }
+
+    // --- KALKULATOR SMART BUDGET SPLITTER & KUOTA HARIAN (TABUNGAN MANUAL & KETERANGAN LENGKAP) ---
+    function setBudgetAmount(amount) {
+      document.getElementById("input-total-budget").value = amount;
+      calculateSmartBudget();
+    }
+
+    function calculateSmartBudget() {
+      const inputBudgetEl = document.getElementById("input-total-budget");
+      const inputSavingsEl = document.getElementById("input-manual-savings");
+      if (!inputBudgetEl || !inputSavingsEl) return;
+
+      const totalBudget = parseFloat(inputBudgetEl.value) || 0;
+      const manualSavings = parseFloat(inputSavingsEl.value) || 0;
+
+      if (totalBudget <= 0) return;
+
+      // 1. Ambil data total Tagihan Rutin Bulanan riil
+      const bills = JSON.parse(localStorage.getItem("recurringBills") || "[]");
+      const fixedExpenses = bills.reduce((acc, b) => acc + b.amount, 0);
+
+      // 2. Tabungan riil dari input manual
+      const savings = manualSavings;
+
+      // 3. Hitung sisa anggaran untuk Pokok dan Jajan
+      const remainingForDaily = Math.max(0, totalBudget - savings - fixedExpenses);
+
+      // 4. Ambil preset rasio pembagian sisa uang (Pokok vs Jajan)
+      const preset = document.getElementById("budget-preset").value;
+      let ratioNeeds = 0.70; // Standard 70% Pokok
+      let ratioWants = 0.30; // Standard 30% Jajan
+
+      if (preset === "50-30-20") {
+        ratioNeeds = 0.50;
+        ratioWants = 0.50;
+      } else if (preset === "extreme") {
+        ratioNeeds = 0.80;
+        ratioWants = 0.20;
+      }
+
+      const dailyNeeds = Math.floor(remainingForDaily * ratioNeeds);
+      const wants = Math.floor(remainingForDaily * ratioWants);
+
+      // Hitung Kuota Maksimal Harian (Berdasarkan 30 Hari)
+      const dailyNeedsLimit = Math.floor(dailyNeeds / 30);
+      const dailyWantsLimit = Math.floor(wants / 30);
+      const totalDailyLimit = dailyNeedsLimit + dailyWantsLimit;
+
+      // Hitung Persentase Aktual terhadap Total Anggaran
+      const pctSavings = Math.round((savings / totalBudget) * 100);
+      const pctFixed = Math.round((fixedExpenses / totalBudget) * 100);
+      const pctNeeds = Math.round((dailyNeeds / totalBudget) * 100);
+      const pctWants = Math.round((wants / totalBudget) * 100);
+
+      // Update Tampilan Label Cards
+      document.getElementById("label-savings").innerText = `💰 Tabungan (${pctSavings}%)`;
+      document.getElementById("label-fixed").innerText = `📑 Tagihan Tetap (${pctFixed}%)`;
+      document.getElementById("label-needs").innerText = `🛒 Pokok Harian (${pctNeeds}%)`;
+      document.getElementById("label-wants").innerText = `🛍️ Jajan & Keinginan (${pctWants}%)`;
+
+      // Update Tampilan Angka Nominal
+      document.getElementById("calc-savings").innerText = `Rp ${savings.toLocaleString('id-ID')}`;
+      document.getElementById("calc-fixed").innerText = `Rp ${fixedExpenses.toLocaleString('id-ID')}`;
+      document.getElementById("calc-needs").innerText = `Rp ${dailyNeeds.toLocaleString('id-ID')}`;
+      document.getElementById("calc-wants").innerText = `Rp ${wants.toLocaleString('id-ID')}`;
+
+      // Update Batas Kuota Harian & Breakdown
+      document.getElementById("calc-daily-limit").innerText = `Rp ${totalDailyLimit.toLocaleString('id-ID')} / hari`;
+      document.getElementById("calc-daily-breakdown").innerText = `(Pokok: Rp ${dailyNeedsLimit.toLocaleString('id-ID')} / hari | Jajan: Rp ${dailyWantsLimit.toLocaleString('id-ID')} / hari)`;
+
+      // Update Progress Bar Visualisasi
+      document.getElementById("bar-savings").style.width = `${Math.min(100, (savings / totalBudget) * 100)}%`;
+      document.getElementById("bar-fixed").style.width = `${Math.min(100, (fixedExpenses / totalBudget) * 100)}%`;
+      document.getElementById("bar-needs").style.width = `${Math.min(100, (dailyNeeds / totalBudget) * 100)}%`;
+      document.getElementById("bar-wants").style.width = `${Math.min(100, (wants / totalBudget) * 100)}%`;
+    }
+
+    async function applyCalculatedBudgetToSystem() {
+      const needsVal = document.getElementById("calc-needs").innerText.replace(/[^0-9]/g, '');
+      const wantsVal = document.getElementById("calc-wants").innerText.replace(/[^0-9]/g, '');
+
+      if (!needsVal || !wantsVal) return;
+
+      if (!confirm("Terapkan anggaran Pokok Harian dan Jajan hasil perhitungan ini ke sistem Batas Anggaran Bulanan?")) return;
+
+      try {
+        await fetch("/budgets/", {
+          method: "POST",
+          headers: { ...getAuthHeader(), "Content-Type": "application/json" },
+          body: JSON.stringify({ category: "Kebutuhan Pokok", monthly_limit: parseFloat(needsVal) })
+        });
+
+        await fetch("/budgets/", {
+          method: "POST",
+          headers: { ...getAuthHeader(), "Content-Type": "application/json" },
+          body: JSON.stringify({ category: "Keinginan & Jajan", monthly_limit: parseFloat(wantsVal) })
+        });
+
+        alert("Anggaran berhasil diterapkan ke sistem utama!");
+        loadBudgets();
+      } catch (err) {
+        alert("Gagal mengupdate anggaran ke sistem.");
+      }
+    }
+
+    // --- DOMPET & TRANSFER FUNCTIONS ---
+    async function loadWallets() {
+      const res = await fetch("/wallets/", { headers: getAuthHeader() });
+      globalWallets = await res.json();
+      
+      const list = document.getElementById("wallets-list");
+      const select = document.getElementById("trx-wallet");
+      list.innerHTML = "";
+      select.innerHTML = "";
+
+      globalWallets.forEach(w => {
+        list.innerHTML += `
+          <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow border-l-4 border-blue-500 flex justify-between items-start">
+            <div>
+              <p class="text-xs text-gray-500 dark:text-gray-400 font-semibold">${w.name}</p>
+              <p class="text-xl font-bold mt-1">Rp ${w.balance.toLocaleString('id-ID')}</p>
+            </div>
+            <button onclick="deleteWallet(${w.id})" class="text-gray-400 hover:text-red-500 transition p-1">
+              <i class="fa-solid fa-trash text-sm"></i>
+            </button>
+          </div>
+        `;
+        select.innerHTML += `<option value="${w.id}">${w.name}</option>`;
+      });
+    }
+
+    async function addWalletPrompt() {
+      const name = prompt("Masukkan nama dompet baru (contoh: BCA / GoPay):");
+      if (!name) return;
+      
+      await fetch("/wallets/", {
+        method: "POST",
+        headers: { ...getAuthHeader(), "Content-Type": "application/json" },
+        body: JSON.stringify({ name, balance: 0 })
+      });
+      loadDashboardData();
+    }
+
+    async function deleteWallet(id) {
+      if (!confirm("Apakah Anda yakin ingin menghapus dompet ini?")) return;
+      await fetch(`/wallets/${id}`, { method: "DELETE", headers: getAuthHeader() });
+      loadDashboardData();
+    }
+
+    async function transferWalletPrompt() {
+      if (globalWallets.length < 2) {
+        alert("Minimal harus memiliki 2 dompet untuk melakukan transfer!");
+        return;
+      }
+
+      let optionsStr = globalWallets.map((w, idx) => `${idx + 1}. ${w.name} (Saldo: Rp ${w.balance.toLocaleString('id-ID')})`).join("\n");
+      
+      const fromIdx = prompt(`Pilih Dompet ASAL (Ketik Angkanya):\n${optionsStr}`) - 1;
+      if (isNaN(fromIdx) || !globalWallets[fromIdx]) return;
+
+      const toIdx = prompt(`Pilih Dompet TUJUAN (Ketik Angkanya):\n${optionsStr}`) - 1;
+      if (isNaN(toIdx) || !globalWallets[toIdx] || fromIdx === toIdx) {
+        alert("Dompet tujuan tidak valid!");
+        return;
+      }
+
+      const amount = parseFloat(prompt("Masukkan nominal transfer (Rp):"));
+      if (isNaN(amount) || amount <= 0) return;
+
+      if (globalWallets[fromIdx].balance < amount) {
+        alert("Saldo dompet asal tidak mencukupi!");
+        return;
+      }
+
+      const formOut = new FormData();
+      formOut.append("type", "pengeluaran");
+      formOut.append("wallet_id", globalWallets[fromIdx].id);
+      formOut.append("amount", amount);
+      formOut.append("description", `[kebutuhan] Transfer ke ${globalWallets[toIdx].name}`);
+      formOut.append("category", "Transfer");
+
+      const formIn = new FormData();
+      formIn.append("type", "pemasukan");
+      formIn.append("wallet_id", globalWallets[toIdx].id);
+      formIn.append("amount", amount);
+      formIn.append("description", `[kebutuhan] Transfer dari ${globalWallets[fromIdx].name}`);
+      formIn.append("category", "Transfer");
+
+      await fetch("/transactions/", { method: "POST", headers: getAuthHeader(), body: formOut });
+      await fetch("/transactions/", { method: "POST", headers: getAuthHeader(), body: formIn });
+
+      alert("Transfer berhasil dilakukan!");
+      loadDashboardData();
+    }
+
+    // --- CHART.JS FUNCTIONS ---
+    function renderCharts() {
+      if (!globalTransactions.length) return;
+
+      const expByCat = {};
+      globalTransactions.filter(t => t.type === 'pengeluaran').forEach(t => {
+        expByCat[t.category] = (expByCat[t.category] || 0) + t.amount;
+      });
+
+      const catLabels = Object.keys(expByCat);
+      const catData = Object.values(expByCat);
+
+      const ctx1 = document.getElementById("categoryChart").getContext("2d");
+      if (categoryChartInstance) categoryChartInstance.destroy();
+
+      categoryChartInstance = new Chart(ctx1, {
+        type: 'doughnut',
+        data: {
+          labels: catLabels,
+          datasets: [{
+            data: catData,
+            backgroundColor: ['#3b82f6', '#ec4899', '#10b981', '#f59e0b', '#8b5cf6', '#64748b']
+          }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+
+      let totalIncome = 0;
+      let totalExpense = 0;
+
+      globalTransactions.forEach(t => {
+        if (t.type === 'pemasukan') totalIncome += t.amount;
+        else totalExpense += t.amount;
+      });
+
+      const ctx2 = document.getElementById("cashflowChart").getContext("2d");
+      if (cashflowChartInstance) cashflowChartInstance.destroy();
+
+      cashflowChartInstance = new Chart(ctx2, {
+        type: 'bar',
+        data: {
+          labels: ['Total Pemasukan', 'Total Pengeluaran'],
+          datasets: [{
+            label: 'Nominal (Rp)',
+            data: [totalIncome, totalExpense],
+            backgroundColor: ['#10b981', '#ef4444']
+          }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+      });
+    }
+
+    // --- UTANG & PIUTANG TRACKER ---
+    function loadDebts() {
+      const debts = JSON.parse(localStorage.getItem("debts") || "[]");
+      const list = document.getElementById("debts-list");
+      list.innerHTML = debts.length ? "" : "<p class='text-xs text-gray-400'>Belum ada catatan utang/piutang.</p>";
+
+      let totalUtang = 0;
+      let totalPiutang = 0;
+
+      debts.forEach((d, idx) => {
+        if (d.type === 'utang') totalUtang += d.amount;
+        if (d.type === 'piutang') totalPiutang += d.amount;
+
+        list.innerHTML += `
+          <div class="flex justify-between items-center p-2.5 bg-gray-50 dark:bg-gray-700/50 rounded-xl text-xs">
+            <div>
+              <span class="font-bold ${d.type === 'utang' ? 'text-red-500' : 'text-green-500'}">[${d.type.toUpperCase()}]</span>
+              <span class="font-semibold ml-1">${d.person}</span>
+              <p class="text-gray-500 text-[11px]">Rp ${d.amount.toLocaleString('id-ID')} - ${d.note}</p>
+            </div>
+            <button onclick="deleteDebt(${idx})" class="text-xs bg-gray-200 dark:bg-gray-600 px-2 py-1 rounded hover:bg-green-500 hover:text-white transition">Lunas / Hapus</button>
+          </div>
+        `;
+      });
+
+      const totalBalance = globalWallets.reduce((acc, w) => acc + w.balance, 0);
+      const netSaldo = totalBalance + totalPiutang - totalUtang;
+
+      document.getElementById("total-utang-text").innerText = `Rp ${totalUtang.toLocaleString('id-ID')}`;
+      document.getElementById("total-piutang-text").innerText = `Rp ${totalPiutang.toLocaleString('id-ID')}`;
+      document.getElementById("net-saldo-debt-text").innerText = `Rp ${netSaldo.toLocaleString('id-ID')}`;
+    }
+
+    function addDebtPrompt() {
+      const type = prompt("Ketik 'utang' (kamu pinjam uang) ATAU 'piutang' (orang pinjam uangmu):");
+      if (!type || (type !== 'utang' && type !== 'piutang')) return;
+
+      const person = prompt("Nama Orang / Pihak:");
+      if (!person) return;
+
+      const amount = parseFloat(prompt("Nominal (Rp):"));
+      if (isNaN(amount)) return;
+
+      const note = prompt("Catatan Keterangan:") || "-";
+
+      const debts = JSON.parse(localStorage.getItem("debts") || "[]");
+      debts.push({ type, person, amount, note });
+      localStorage.setItem("debts", JSON.stringify(debts));
+      loadDebts();
+    }
+
+    function deleteDebt(idx) {
+      const debts = JSON.parse(localStorage.getItem("debts") || "[]");
+      debts.splice(idx, 1);
+      localStorage.setItem("debts", JSON.stringify(debts));
+      loadDebts();
+    }
+
+    // --- TAGIHAN RUTIN BULANAN ---
+    function loadRecurringBills() {
+      const bills = JSON.parse(localStorage.getItem("recurringBills") || "[]");
+      const list = document.getElementById("recurring-list");
+      list.innerHTML = bills.length ? "" : "<p class='text-xs text-gray-400'>Belum ada daftar tagihan rutin.</p>";
+
+      let totalRecurring = 0;
+
+      bills.forEach((b, idx) => {
+        totalRecurring += b.amount;
+        list.innerHTML += `
+          <div class="flex justify-between items-center p-2.5 bg-gray-50 dark:bg-gray-700/50 rounded-xl text-xs">
+            <div>
+              <span class="font-bold text-sky-500">${b.title}</span>
+              <p class="text-gray-500 text-[11px]">Jatuh tempo: Tgl ${b.dueDate} | Rp ${b.amount.toLocaleString('id-ID')}</p>
+            </div>
+            <button onclick="deleteRecurring(${idx})" class="text-red-500 hover:text-red-700 p-1"><i class="fa-solid fa-trash"></i></button>
+          </div>
+        `;
+      });
+
+      const totalBalance = globalWallets.reduce((acc, w) => acc + w.balance, 0);
+      const netSaldo = totalBalance - totalRecurring;
+
+      document.getElementById("total-recurring-text").innerText = `Rp ${totalRecurring.toLocaleString('id-ID')}`;
+      document.getElementById("net-saldo-recurring-text").innerText = `Rp ${netSaldo.toLocaleString('id-ID')}`;
+    }
+
+    function addRecurringPrompt() {
+      const title = prompt("Nama Tagihan (contoh: Kos / Wi-Fi / Spotify):");
+      if (!title) return;
+
+      const dueDate = prompt("Jatuh tempo tanggal berapa setiap bulannya? (1-31):");
+      if (!dueDate) return;
+
+      const amount = parseFloat(prompt("Nominal Tagihan (Rp):"));
+      if (isNaN(amount)) return;
+
+      const bills = JSON.parse(localStorage.getItem("recurringBills") || "[]");
+      bills.push({ title, dueDate, amount });
+      localStorage.setItem("recurringBills", JSON.stringify(bills));
+      loadRecurringBills();
+      calculateSmartBudget();
+    }
+
+    function deleteRecurring(idx) {
+      const bills = JSON.parse(localStorage.getItem("recurringBills") || "[]");
+      bills.splice(idx, 1);
+      localStorage.setItem("recurringBills", JSON.stringify(bills));
+      loadRecurringBills();
+      calculateSmartBudget();
+    }
+
+    // --- KALKULATOR DANA DARURAT ---
+    function updateEmergencyFund() {
+      const totalBalance = globalWallets.reduce((acc, w) => acc + w.balance, 0);
+      const totalExpense = globalTransactions.filter(t => t.type === 'pengeluaran').reduce((acc, t) => acc + t.amount, 0);
+      
+      const avgExpense = totalExpense || 1; 
+      const monthsSurvive = (totalBalance / avgExpense).toFixed(1);
+
+      document.getElementById("emergency-months").innerText = `${monthsSurvive} Bulan`;
+      document.getElementById("emergency-avg-exp").innerText = `Rp ${avgExpense.toLocaleString('id-ID')}`;
+
+      const desc = document.getElementById("emergency-desc");
+      if (monthsSurvive >= 6) desc.innerText = "Kondisi sangat ideal & aman! (≥ 6 Bulan)";
+      else if (monthsSurvive >= 3) desc.innerText = "Cukup aman, tingkatkan ke 6 bulan.";
+      else desc.innerText = "Waspada! Tabungan dana darurat masih minim.";
+    }
+
+    // --- BUDGET FUNCTIONS ---
+    async function loadBudgets() {
+      const res = await fetch("/budgets/", { headers: getAuthHeader() });
+      const budgets = await res.json();
+      const list = document.getElementById("budgets-list");
+      list.innerHTML = budgets.length ? "" : "<p class='text-xs text-gray-400'>Belum ada batasan anggaran.</p>";
+
+      budgets.forEach(b => {
+        list.innerHTML += `
+          <div class="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
+            <div class="flex justify-between text-xs font-semibold mb-1">
+              <span>${b.category}</span>
+              <span>Limit: Rp ${b.monthly_limit.toLocaleString('id-ID')}</span>
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    async function addBudgetPrompt() {
+      const category = prompt("Masukkan nama kategori anggaran (contoh: Makanan):");
+      if (!category) return;
+      const limit = prompt("Masukkan batas maksimal anggaran bulanan (Rp):");
+      if (!limit) return;
+
+      await fetch("/budgets/", {
+        method: "POST",
+        headers: { ...getAuthHeader(), "Content-Type": "application/json" },
+        body: JSON.stringify({ category, monthly_limit: parseFloat(limit) })
+      });
+      loadDashboardData();
+    }
+
+    // --- GOAL FUNCTIONS ---
+    async function loadGoals() {
+      const res = await fetch("/goals/", { headers: getAuthHeader() });
+      const goals = await res.json();
+      const list = document.getElementById("goals-list");
+      list.innerHTML = goals.length ? "" : "<p class='text-xs text-gray-400'>Belum ada target tabungan.</p>";
+
+      goals.forEach(g => {
+        const percent = Math.min(Math.round((g.current_amount / g.target_amount) * 100), 100);
+        list.innerHTML += `
+          <div class="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
+            <div class="flex justify-between text-xs font-semibold mb-1">
+              <span>${g.title}</span>
+              <span>${percent}% (Rp ${g.current_amount.toLocaleString('id-ID')} / ${g.target_amount.toLocaleString('id-ID')})</span>
+            </div>
+            <div class="w-full bg-gray-200 dark:bg-gray-600 h-2 rounded-full overflow-hidden mb-2">
+              <div class="bg-emerald-500 h-full" style="width: ${percent}%"></div>
+            </div>
+            <button onclick="addSavingsPrompt(${g.id})" class="text-xs text-emerald-600 font-bold hover:underline">+ Tambah Tabungan</button>
+          </div>
+        `;
+      });
+    }
+
+    async function addGoalPrompt() {
+      const title = prompt("Masukkan judul target (contoh: Beli Laptop Baru):");
+      if (!title) return;
+      const target_amount = prompt("Masukkan total target tabungan (Rp):");
+      if (!target_amount) return;
+
+      await fetch("/goals/", {
+        method: "POST",
+        headers: { ...getAuthHeader(), "Content-Type": "application/json" },
+        body: JSON.stringify({ title, target_amount: parseFloat(target_amount) })
+      });
+      loadGoals();
+    }
+
+    async function addSavingsPrompt(goalId) {
+      const amount = prompt("Masukkan jumlah nominal tabungan yang ingin ditambahkan (Rp):");
+      if (!amount) return;
+
+      await fetch(`/goals/${goalId}/add-savings?amount=${parseFloat(amount)}`, {
+        method: "PUT",
+        headers: getAuthHeader()
+      });
+      loadGoals();
+    }
+
+    // --- TRANSACTIONS FUNCTIONS ---
+    function autoCategorize(text) {
+      const val = text.toLowerCase();
+      const catInput = document.getElementById("trx-cat");
+      const priorityInput = document.getElementById("trx-priority");
+
+      if (val.includes("kopi") || val.includes("boba") || val.includes("game") || val.includes("bioskop") || val.includes("nonton")) {
+        priorityInput.value = "keinginan";
+      } else if (val.includes("makan") || val.includes("nasi") || val.includes("bensin") || val.includes("kos") || val.includes("listrik")) {
+        priorityInput.value = "kebutuhan";
+      }
+
+      if (val.includes("kopi") || val.includes("makan") || val.includes("nasi")) catInput.value = "Makanan";
+      else if (val.includes("bensin") || val.includes("gojek") || val.includes("grab")) catInput.value = "Transportasi";
+      else if (val.includes("gaji") || val.includes("bonus")) catInput.value = "Pendapatan";
+    }
+
+    async function saveTransaction(e) {
+      e.preventDefault();
+      const formData = new FormData();
+      formData.append("type", document.getElementById("trx-type").value);
+      formData.append("wallet_id", document.getElementById("trx-wallet").value);
+      formData.append("amount", document.getElementById("trx-amount").value);
+      
+      const priority = document.getElementById("trx-priority").value;
+      const userDesc = document.getElementById("trx-desc").value || "";
+      const fullDesc = `[${priority}] ${userDesc}`;
+
+      formData.append("description", fullDesc);
+      formData.append("category", document.getElementById("trx-cat").value);
+
+      const receipt = document.getElementById("trx-receipt").files[0];
+      if (receipt) formData.append("receipt", receipt);
+
+      await fetch("/transactions/", {
+        method: "POST",
+        headers: getAuthHeader(),
+        body: formData
+      });
+
+      document.getElementById("trx-form").reset();
+      loadDashboardData();
+    }
+
+    async function loadTransactions() {
+      const res = await fetch("/transactions/", { headers: getAuthHeader() });
+      globalTransactions = await res.json();
+
+      const tbody = document.getElementById("trx-list");
+      tbody.innerHTML = globalTransactions.length ? "" : "<tr><td colspan='7' class='p-3 text-center text-gray-400'>Belum ada transaksi.</td></tr>";
+
+      globalTransactions.forEach(t => {
+        const isExp = t.type === "pengeluaran";
+        const receiptHtml = t.receipt_image ? `<a href="/static/${t.receipt_image}" target="_blank" class="text-blue-500 underline">Lihat</a>` : "-";
+        
+        let isWants = t.description && t.description.includes("[keinginan]");
+        let cleanDesc = t.description ? t.description.replace("[kebutuhan]", "").replace("[keinginan]", "").trim() : "-";
+
+        tbody.innerHTML += `
+          <tr>
+            <td class="p-3">${new Date(t.date).toLocaleDateString('id-ID')}</td>
+            <td class="p-3 font-semibold">
+              ${isExp ? (isWants ? '<span class="text-pink-500 bg-pink-100 dark:bg-pink-900/40 px-2 py-0.5 rounded-md text-xs">Keinginan 🛍️</span>' : '<span class="text-green-600 bg-green-100 dark:bg-green-900/40 px-2 py-0.5 rounded-md text-xs">Kebutuhan 🛒</span>') : '<span class="text-blue-500 text-xs">-</span>'}
+            </td>
+            <td class="p-3 font-semibold">${t.category}</td>
+            <td class="p-3">${cleanDesc}</td>
+            <td class="p-3 font-bold ${isExp ? 'text-red-500' : 'text-green-500'}">
+              ${isExp ? '-' : '+'} Rp ${t.amount.toLocaleString('id-ID')}
+            </td>
+            <td class="p-3">${receiptHtml}</td>
+            <td class="p-3 text-center">
+              <button onclick="deleteTrx(${t.id})" class="text-red-500 hover:text-red-700"><i class="fa-solid fa-trash"></i></button>
+            </td>
+          </tr>
+        `;
+      });
+    }
+
+    async function deleteTrx(id) {
+      if (!confirm("Yakin ingin menghapus transaksi ini?")) return;
+      await fetch(`/transactions/${id}`, { method: "DELETE", headers: getAuthHeader() });
+      loadDashboardData();
+    }
+
+    // --- SMART SAVER ENGINE ---
+    function resetWeeklyCycle() {
+      const todayISO = new Date().toISOString().split('T')[0];
+      localStorage.setItem("weeklyStartDate", todayISO);
+      alert("Siklus pengeluaran mingguan berhasil di-restart mulai hari ini (" + new Date().toLocaleDateString('id-ID') + ")!");
+      updateSmartSaver();
+    }
+
+    function updateSmartSaver() {
+      const now = new Date();
+      const cycleSelect = document.getElementById("saver-cycle");
+      const cycle = cycleSelect ? cycleSelect.value : "bulanan";
+      const totalBalance = globalWallets.reduce((acc, w) => acc + w.balance, 0);
+
+      let periodSpent = 0;
+      let periodQuota = 0;
+      let periodRemainingDays = 1;
+      let periodLabel = "";
+
+      if (cycle === "mingguan") {
+        let startDateStr = localStorage.getItem("weeklyStartDate");
+        if (!startDateStr) {
+          const day = now.getDay();
+          const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+          const monday = new Date(now.setDate(diff));
+          startDateStr = monday.toISOString().split('T')[0];
+          localStorage.setItem("weeklyStartDate", startDateStr);
+        }
+
+        const startDate = new Date(startDateStr);
+        const diffTime = Math.abs(now - startDate);
+        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+        periodRemainingDays = Math.max(1, 7 - (diffDays % 7));
+
+        periodSpent = globalTransactions
+          .filter(t => t.type === 'pengeluaran' && t.date >= startDateStr)
+          .reduce((acc, t) => acc + t.amount, 0);
+
+        periodQuota = Math.max(0, Math.floor(totalBalance / periodRemainingDays));
+        periodLabel = `Sisa siklus mingguan: ${periodRemainingDays} hari`;
+      } else {
+        const totalDaysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+        periodRemainingDays = totalDaysInMonth - now.getDate() + 1;
+
+        const todayStr = now.toISOString().split('T')[0];
+        periodSpent = globalTransactions
+          .filter(t => t.type === 'pengeluaran' && t.date.startsWith(todayStr))
+          .reduce((acc, t) => acc + t.amount, 0);
+
+        periodQuota = Math.max(0, Math.floor(totalBalance / periodRemainingDays));
+        periodLabel = `Sisa hari: ${periodRemainingDays} hari`;
+      }
+
+      const dailyRemaining = periodQuota - periodSpent;
+
+      document.getElementById("saver-daily-limit").innerText = `Rp ${periodQuota.toLocaleString('id-ID')} /${cycle === 'mingguan' ? 'minggu' : 'hari'}`;
+      document.getElementById("saver-today-spent").innerText = `Rp ${periodSpent.toLocaleString('id-ID')}`;
+      document.getElementById("saver-days-left").innerText = periodLabel;
+      document.getElementById("saver-daily-remaining").innerText = `Sisa kuota: Rp ${dailyRemaining.toLocaleString('id-ID')}`;
+
+      const statusBadge = document.getElementById("saver-status-badge");
+      if (periodSpent > periodQuota && periodQuota > 0) {
+        statusBadge.className = "px-3 py-1 rounded-full text-xs font-bold bg-red-500 text-white animate-pulse";
+        statusBadge.innerText = "Boros! Overbudget ⚠️";
+      } else if (periodSpent > periodQuota * 0.8 && periodQuota > 0) {
+        statusBadge.className = "px-3 py-1 rounded-full text-xs font-bold bg-yellow-400 text-gray-900";
+        statusBadge.innerText = "Waspada 🟡";
+      } else {
+        statusBadge.className = "px-3 py-1 rounded-full text-xs font-bold bg-green-400 text-gray-900";
+        statusBadge.innerText = "Keuangan Aman ✅";
+      }
+
+      let needsTotal = 0;
+      let wantsTotal = 0;
+
+      globalTransactions.filter(t => t.type === 'pengeluaran').forEach(t => {
+        if (t.description && t.description.includes("[keinginan]")) {
+          wantsTotal += t.amount;
+        } else {
+          needsTotal += t.amount;
+        }
+      });
+
+      const totalExp = needsTotal + wantsTotal;
+      const needsPercent = totalExp > 0 ? Math.round((needsTotal / totalExp) * 100) : 50;
+      const wantsPercent = totalExp > 0 ? Math.round((wantsTotal / totalExp) * 100) : 50;
+
+      document.getElementById("saver-needs-percent").innerText = `${needsPercent}%`;
+      document.getElementById("saver-wants-percent").innerText = `${wantsPercent}%`;
+      document.getElementById("saver-needs-bar").style.width = `${needsPercent}%`;
+      document.getElementById("saver-wants-bar").style.width = `${wantsPercent}%`;
+    }
+
+    async function exportExcel() {
+      const res = await fetch("/export/excel", { headers: getAuthHeader() });
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "Laporan_Keuangan.xlsx";
+      a.click();
+    }
+
+    // --- FUNGSI AI ADVISOR ---
+    async function fetchAIInsight() {
+      const textElement = document.getElementById("ai-insight-text");
+      textElement.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> AI sedang berpikir keras menganalisis datamu[cite: 5]...`;
+      
+      try {
+          const res = await fetch("/ai/insight", { headers: getAuthHeader() });
+          const data = await res.json();
+          
+          if (!res.ok) throw new Error("Gagal mengambil data dari AI");
+          
+          textElement.innerText = `"${data.insight}"`;
+      } catch (err) {
+          textElement.innerText = "Maaf, AI sedang sibuk atau error. Coba lagi nanti!";
+          console.error(err);
+      }
+    }
+  </script>
+</body>
+</html>
