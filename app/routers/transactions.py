@@ -10,15 +10,25 @@ from app import models, schemas, auth
 
 router = APIRouter(prefix="/transactions", tags=["Transactions"])
 
-UPLOAD_DIR = "static/uploads"
-os.makedirs(UPLOAD_DIR, exist_ok=True)
+# Penyesuaian direktori untuk Vercel (Serverless read-only file system)
+if os.environ.get("VERCEL"):
+    UPLOAD_DIR = "/tmp/static/uploads"
+    BASE_STATIC_DIR = "/tmp/static"
+else:
+    UPLOAD_DIR = "static/uploads"
+    BASE_STATIC_DIR = "static"
+
+try:
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
+except OSError:
+    pass
 
 @router.get("/", response_model=List[schemas.TransactionResponse])
 def get_transactions(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    return db.query(models.Transaction).filter(models.Transaction.user_id == current_user.id).order_by(models.Transaction.date.desc()).all()
+    return db.query(models.Transaction).filter(models.Transaction.user_id == current_user.id).order_by(models.Transaction.date.desc()).all()[cite: 1]
 
 @router.post("/", response_model=schemas.TransactionResponse)
 def create_transaction(
@@ -31,14 +41,14 @@ def create_transaction(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    # Cek kepemilikan dompet
+    # Cek kepemilikan dompet[cite: 1]
     wallet = db.query(models.Wallet).filter(
         models.Wallet.id == wallet_id, 
         models.Wallet.user_id == current_user.id
     ).first()
     
     if not wallet:
-        raise HTTPException(status_code=404, detail="Dompet tidak ditemukan!")
+        raise HTTPException(status_code=404, detail="Dompet tidak ditemukan!")[cite: 1]
 
     # Simpan file struk jika ada
     receipt_path = None
@@ -46,18 +56,22 @@ def create_transaction(
         file_ext = receipt.filename.split(".")[-1]
         file_name = f"{uuid4().hex}.{file_ext}"
         receipt_path = f"uploads/{file_name}"
-        full_path = os.path.join("static", receipt_path)
+        full_path = os.path.join(BASE_STATIC_DIR, receipt_path)
         
-        with open(full_path, "wb") as buffer:
-            shutil.copyfileobj(receipt.file, buffer)
+        try:
+            os.makedirs(os.path.dirname(full_path), exist_ok=True)
+            with open(full_path, "wb") as buffer:
+                shutil.copyfileobj(receipt.file, buffer)
+        except OSError:
+            pass
 
-    # Otomatis update Saldo Dompet
+    # Otomatis update Saldo Dompet[cite: 1]
     if type == "pemasukan":
         wallet.balance += amount
     elif type == "pengeluaran":
         wallet.balance -= amount
 
-    # Buat Transaksi Baru
+    # Buat Transaksi Baru[cite: 1]
     new_trx = models.Transaction(
         type=type,
         amount=amount,
@@ -71,7 +85,7 @@ def create_transaction(
     db.add(new_trx)
     db.commit()
     db.refresh(new_trx)
-    return new_trx
+    return new_trx[cite: 1]
 
 @router.delete("/{trx_id}")
 def delete_transaction(
@@ -85,9 +99,9 @@ def delete_transaction(
     ).first()
 
     if not trx:
-        raise HTTPException(status_code=404, detail="Transaksi tidak ditemukan")
+        raise HTTPException(status_code=404, detail="Transaksi tidak ditemukan")[cite: 1]
 
-    # Kembalikan saldo dompet
+    # Kembalikan saldo dompet[cite: 1]
     wallet = db.query(models.Wallet).filter(models.Wallet.id == trx.wallet_id).first()
     if wallet:
         if trx.type == "pemasukan":
@@ -97,10 +111,13 @@ def delete_transaction(
 
     # Hapus file foto struk jika ada
     if trx.receipt_image:
-        full_path = os.path.join("static", trx.receipt_image)
+        full_path = os.path.join(BASE_STATIC_DIR, trx.receipt_image)
         if os.path.exists(full_path):
-            os.remove(full_path)
+            try:
+                os.remove(full_path)
+            except OSError:
+                pass
 
     db.delete(trx)
     db.commit()
-    return {"message": "Transaksi berhasil dihapus"}
+    return {"message": "Transaksi berhasil dihapus"}[cite: 1]
